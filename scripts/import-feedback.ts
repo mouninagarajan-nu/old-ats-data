@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { parseCSV } from "./utils/csv-parser";
 import { log, logProgress } from "./utils/logger";
+import { Prisma } from "@prisma/client";
 import { prisma } from "./utils/prisma-client";
 
 const FEEDBACK_DIR = path.join(__dirname, "..", "Freshteam Export Masterdata", "Freshteam_Interview Feedback Data");
@@ -20,12 +21,12 @@ interface FeedbackRow {
   "interview_stage_deleted": string;
 }
 
-function parseEvaluation(evalStr: string): object | null {
-  if (!evalStr || evalStr.trim() === "") return null;
+function parseEvaluation(evalStr: string): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  if (!evalStr || evalStr.trim() === "") return Prisma.JsonNull;
   try {
     return JSON.parse(evalStr);
   } catch {
-    return null;
+    return Prisma.JsonNull;
   }
 }
 
