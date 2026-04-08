@@ -1,65 +1,120 @@
-import Image from "next/image";
+import { prisma } from "@/lib/prisma";
+import Link from "next/link";
+import { Users, Briefcase, FileText, MessageSquare } from "lucide-react";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+async function getStats() {
+  const [candidates, jobs, applications, feedback] = await Promise.all([
+    prisma.candidate.count(),
+    prisma.job.count(),
+    prisma.application.count(),
+    prisma.interviewFeedback.count(),
+  ]);
+
+  const jobsByStatus = await prisma.job.groupBy({
+    by: ["status"],
+    _count: true,
+  });
+
+  const recentCandidates = await prisma.candidate.findMany({
+    take: 10,
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      skills: true,
+      city: true,
+      country: true,
+    },
+  });
+
+  return { counts: { candidates, jobs, applications, feedback }, jobsByStatus, recentCandidates };
+}
+
+export default async function Dashboard() {
+  const { counts, jobsByStatus, recentCandidates } = await getStats();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard icon={<Users size={24} />} label="Candidates" value={counts.candidates} href="/candidates" color="bg-blue-500" />
+        <StatCard icon={<Briefcase size={24} />} label="Jobs" value={counts.jobs} href="/jobs" color="bg-green-500" />
+        <StatCard icon={<FileText size={24} />} label="Applications" value={counts.applications} color="bg-purple-500" />
+        <StatCard icon={<MessageSquare size={24} />} label="Interview Feedback" value={counts.feedback} color="bg-orange-500" />
+      </div>
+
+      {/* Jobs by Status + Recent Candidates */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="bg-card rounded-xl border border-border p-6">
+          <h2 className="text-lg font-semibold mb-4">Jobs by Status</h2>
+          <div className="space-y-3">
+            {jobsByStatus.map((j) => (
+              <div key={j.status} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={j.status} />
+                  <span className="text-sm font-medium">{j.status}</span>
+                </div>
+                <span className="text-sm font-bold">{j._count}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="bg-card rounded-xl border border-border p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Recent Candidates</h2>
+            <Link href="/candidates" className="text-sm text-primary hover:underline">View all</Link>
+          </div>
+          <div className="space-y-3">
+            {recentCandidates.map((c) => (
+              <Link key={c.id} href={`/candidates/${c.id}`} className="flex items-center justify-between hover:bg-accent rounded-lg p-2 -mx-2 transition-colors">
+                <div>
+                  <p className="text-sm font-medium">{c.firstName} {c.lastName}</p>
+                  <p className="text-xs text-muted-foreground">{c.email}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">{c.city}{c.country ? `, ${c.country}` : ""}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
-      </main>
+      </div>
     </div>
+  );
+}
+
+function StatCard({ icon, label, value, href, color }: { icon: React.ReactNode; label: string; value: number; href?: string; color: string }) {
+  const content = (
+    <div className="bg-card rounded-xl border border-border p-6 hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-4">
+        <div className={`${color} text-white p-3 rounded-lg`}>{icon}</div>
+        <div>
+          <p className="text-2xl font-bold">{value.toLocaleString()}</p>
+          <p className="text-sm text-muted-foreground">{label}</p>
+        </div>
+      </div>
+    </div>
+  );
+  return href ? <Link href={href}>{content}</Link> : content;
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const colors: Record<string, string> = {
+    Closed: "bg-red-100 text-red-700",
+    Hold: "bg-yellow-100 text-yellow-700",
+    Private: "bg-gray-100 text-gray-700",
+    Published: "bg-green-100 text-green-700",
+  };
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${colors[status] || "bg-gray-100 text-gray-700"}`}>
+      {status}
+    </span>
   );
 }

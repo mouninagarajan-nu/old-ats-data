@@ -1,0 +1,156 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Candidate {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  firstName   String?
+  middleName  String?
+  lastName    String?
+  phone       String?
+  mobile      String?
+  gender      String?
+  dateOfBirth String?
+  skypeId     String?
+  street      String?
+  city        String?
+  state       String?
+  country     String?
+  zipCode     String?
+  profileUrls String?  @db.Text
+  skills      String[] @default([])
+  tags        String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  applications   Application[]
+  employers      Employer[]
+  qualifications Qualification[]
+  outreachNotes  OutreachNote[]
+
+  @@index([email])
+  @@index([firstName, lastName])
+}
+
+model Job {
+  id              String   @id @default(cuid())
+  freshteamJobId  String?  @unique
+  title           String
+  status          String
+  clientName      String?
+  descriptionHtml String?  @db.Text
+  folderName      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  applications Application[]
+
+  @@index([title])
+  @@index([status])
+}
+
+model Application {
+  id                      String   @id @default(cuid())
+  candidateId             String
+  jobId                   String
+  applicantId             String?
+  applicantSourceName     String?
+  applicantSourceCategory String?
+  candidateSourceName     String?
+  candidateSourceCategory String?
+  ownerName               String?
+  candidateStatus         String?
+  hiringStage             String?
+  hiringSubstage          String?
+  referrerName            String?
+  rejectReason            String?
+  jobFitmentRating        String?
+  totalExperience         String?
+  appliedAt               DateTime?
+  lastUpdatedAt           DateTime?
+  resumePath              String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  candidate         Candidate           @relation(fields: [candidateId], references: [id])
+  job               Job                 @relation(fields: [jobId], references: [id])
+  interviewFeedback InterviewFeedback[]
+
+  @@unique([candidateId, jobId, applicantId])
+  @@index([candidateStatus])
+  @@index([hiringStage])
+  @@index([applicantId])
+}
+
+model Employer {
+  id              String   @id @default(cuid())
+  candidateId     String
+  employerName    String?
+  designation     String?
+  jobDescription  String?  @db.Text
+  startDate       String?
+  endDate         String?
+  currentEmployer Boolean  @default(false)
+
+  candidate Candidate @relation(fields: [candidateId], references: [id])
+
+  @@index([candidateId])
+}
+
+model Qualification {
+  id            String  @id @default(cuid())
+  candidateId   String
+  instituteName String?
+  fieldOfStudy  String?
+  degree        String?
+  summary       String?
+  grade         String?
+  startDate     String?
+  endDate       String?
+  inProgress    Boolean @default(false)
+
+  candidate Candidate @relation(fields: [candidateId], references: [id])
+
+  @@index([candidateId])
+}
+
+model InterviewFeedback {
+  id                     String   @id @default(cuid())
+  applicationId          String
+  interviewStageCategory String?
+  interviewStage         String?
+  panelMemberEmail       String?
+  feedbackDecision       String?
+  feedbackSubmittedTime  String?
+  feedbackEvaluation     Json?
+  feedbackCommentsHtml   String?  @db.Text
+  assessmentAttachment   String?
+  stageDeleted           Boolean  @default(false)
+
+  application Application @relation(fields: [applicationId], references: [id])
+
+  @@index([applicationId])
+  @@index([feedbackDecision])
+}
+
+model OutreachNote {
+  id          String    @id @default(cuid())
+  candidateId String
+  authorName  String
+  noteText    String    @db.Text
+  contacted   Boolean   @default(false)
+  contactedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  candidate Candidate @relation(fields: [candidateId], references: [id])
+
+  @@index([candidateId])
+  @@index([contacted])
+}
